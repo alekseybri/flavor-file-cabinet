@@ -37,7 +37,7 @@ export const mapToAppRecipe = (dbRecipe: SupabaseRecipe): Recipe => {
 };
 
 // Convert from our app format to Supabase format
-export const mapToDbRecipe = (appRecipe: Recipe): Omit<SupabaseRecipe, 'id' | 'user_id' | 'created_at' | 'updated_at'> => {
+export const mapToDbRecipe = (appRecipe: Recipe): Omit<SupabaseRecipe, 'id' | 'created_at' | 'updated_at'> => {
   return {
     title: appRecipe.title,
     description: appRecipe.description,
@@ -49,6 +49,7 @@ export const mapToDbRecipe = (appRecipe: Recipe): Omit<SupabaseRecipe, 'id' | 'u
     instructions: appRecipe.instructions,
     image: appRecipe.image,
     favorite: appRecipe.favorite,
+    user_id: '', // This will be populated in the createRecipe function
   };
 };
 
@@ -82,7 +83,19 @@ export const fetchRecipeById = async (id: string): Promise<Recipe> => {
 };
 
 export const createRecipe = async (recipe: Omit<Recipe, 'id'>): Promise<Recipe> => {
-  const dbRecipe = mapToDbRecipe(recipe as Recipe);
+  // Get the current user
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('User must be logged in to create a recipe');
+  }
+  
+  const userId = session.user.id;
+  
+  // Map the recipe and add the user_id
+  const dbRecipe = {
+    ...mapToDbRecipe(recipe as Recipe),
+    user_id: userId
+  };
   
   const { data, error } = await supabase
     .from('recipes')
@@ -101,9 +114,12 @@ export const createRecipe = async (recipe: Omit<Recipe, 'id'>): Promise<Recipe> 
 export const updateRecipe = async (id: string, recipe: Partial<Recipe>): Promise<Recipe> => {
   const dbRecipe = mapToDbRecipe(recipe as Recipe);
   
+  // Remove user_id from update operation as it shouldn't change
+  const { user_id, ...updateData } = dbRecipe;
+  
   const { data, error } = await supabase
     .from('recipes')
-    .update(dbRecipe)
+    .update(updateData)
     .eq('id', id)
     .select()
     .single();
