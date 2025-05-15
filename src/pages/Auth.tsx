@@ -27,22 +27,51 @@ const Auth = () => {
     checkSession();
   }, [navigate]);
 
+  // Helper function to clean up Supabase auth state
+  const cleanupAuthState = () => {
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.signUp({
+      // Clean up existing auth state
+      cleanupAuthState();
+      
+      // Attempt a global sign out first
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (error) {
+        // Continue even if this fails
+      }
+      
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
       
       if (error) throw error;
       
-      toast({
-        title: "Success!",
-        description: "Check your email for the confirmation link.",
-      });
+      if (data.user) {
+        toast({
+          title: "Success!",
+          description: "Account created successfully. Redirecting to home page.",
+        });
+        
+        // Force page reload and redirect
+        window.location.href = '/';
+      } else {
+        toast({
+          title: "Check your email",
+          description: "Check your email for the confirmation link.",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -59,14 +88,27 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // Clean up existing auth state
+      cleanupAuthState();
+      
+      // Attempt a global sign out first
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (error) {
+        // Continue even if this fails
+      }
+      
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) throw error;
       
-      // Successful login will redirect via the useEffect
+      if (data.user) {
+        // Force page reload and redirect for clean state
+        window.location.href = '/';
+      }
     } catch (error: any) {
       toast({
         title: "Error",
