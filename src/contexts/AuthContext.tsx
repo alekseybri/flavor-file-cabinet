@@ -17,10 +17,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Helper function to clean up Supabase auth state
+  const cleanupAuthState = () => {
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+  };
+
   useEffect(() => {
-    // Set up auth state listener
+    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -29,6 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -38,7 +49,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setLoading(true);
+    try {
+      // Clean up auth state first
+      cleanupAuthState();
+      
+      // Attempt global sign out
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Force page reload for a clean state
+      window.location.href = '/auth';
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Still force refresh even if there's an error
+      window.location.href = '/auth';
+    }
   };
 
   return (
