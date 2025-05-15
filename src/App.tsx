@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import RecipeDetail from "./components/RecipeDetail";
 import Auth from "./pages/Auth";
+import AddRecipePage from "./pages/AddRecipePage";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -50,7 +51,7 @@ const App = () => (
               path="/add-recipe" 
               element={
                 <ProtectedRoute>
-                  <Index />
+                  <AddRecipePage />
                 </ProtectedRoute>
               } 
             />
